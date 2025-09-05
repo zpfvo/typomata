@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Type, Union, get_type_hints
-from typing_extensions import get_args, get_origin, Annotated  # Requires typing_extensions for Python <3.9
+from typing_extensions import (
+    get_args,
+    get_origin,
+    Annotated,
+)
 from graphviz import Digraph
 
 
@@ -26,6 +29,7 @@ def transition(func: Callable) -> Callable:
 
 class BaseStateMachine:
     """Base class for creating state machines using type hints and annotations."""
+
     _transitions: List[Dict[str, Any]] = []
 
     def __init_subclass__(cls, **kwargs):
@@ -33,11 +37,11 @@ class BaseStateMachine:
         cls._transitions = []
         for attr_name in dir(cls):
             attr_value = getattr(cls, attr_name)
-            if callable(attr_value) and hasattr(attr_value, '__is_transition__'):
+            if callable(attr_value) and hasattr(attr_value, "__is_transition__"):
                 hints = get_type_hints(attr_value)
-                source_hint = hints.get('state')
-                action_hint = hints.get('action')
-                dest_hint = hints.get('return')
+                source_hint = hints.get("state")
+                action_hint = hints.get("action")
+                dest_hint = hints.get("return")
 
                 # Process Annotated types to extract metadata
                 dest_metadata = ""
@@ -48,8 +52,8 @@ class BaseStateMachine:
                 if source_hint and action_hint and dest_hint:
                     # Handle Union types in source_hint
                     if (
-                        hasattr(source_hint, '__origin__') and
-                        source_hint.__origin__ is Union
+                        hasattr(source_hint, "__origin__")
+                        and source_hint.__origin__ is Union
                     ):
                         sources = source_hint.__args__
                     else:
@@ -57,8 +61,8 @@ class BaseStateMachine:
 
                     # Handle Union types in action_hint
                     if (
-                        hasattr(action_hint, '__origin__') and
-                        action_hint.__origin__ is Union
+                        hasattr(action_hint, "__origin__")
+                        and action_hint.__origin__ is Union
                     ):
                         actions = action_hint.__args__
                     else:
@@ -66,20 +70,22 @@ class BaseStateMachine:
 
                     # Handle Union types in dest_hint
                     if (
-                        hasattr(dest_hint, '__origin__') and
-                        dest_hint.__origin__ is Union
+                        hasattr(dest_hint, "__origin__")
+                        and dest_hint.__origin__ is Union
                     ):
                         destinations = dest_hint.__args__
                     else:
                         destinations = (dest_hint,)
 
-                    cls._transitions.append({
-                        'sources': sources,
-                        'actions': actions,
-                        'destinations': destinations,
-                        'func': attr_value,
-                        'metadata': dest_metadata,  # Store the edge metadata
-                    })
+                    cls._transitions.append(
+                        {
+                            "sources": sources,
+                            "actions": actions,
+                            "destinations": destinations,
+                            "func": attr_value,
+                            "metadata": dest_metadata,  # Store the edge metadata
+                        }
+                    )
 
     def run(self, state: BaseState, action: BaseAction) -> BaseState:
         """Run the state machine with the given state and action."""
@@ -90,20 +96,22 @@ class BaseStateMachine:
         raise ValueError(f"Invalid transition from {state} with {action}")
 
 
-def generate_state_machine_diagram(state_machine_class: Type[BaseStateMachine], filename: str = 'state_machine_diagram'):
+def generate_state_machine_diagram(
+    state_machine_class: Type[BaseStateMachine], filename: str = "state_machine_diagram"
+):
     """Generate a state machine diagram using Graphviz with annotated edge conditions."""
     transitions = state_machine_class._transitions
-    dot = Digraph(comment='State Machine')
-    
+    dot = Digraph(comment="State Machine")
+
     font_family = "DejaVu Sans"
     dot.attr(fontname=font_family)
 
     # Collect unique state names
     state_names = set()
     for t in transitions:
-        for source in t['sources']:
+        for source in t["sources"]:
             state_names.add(source.__name__)
-        for dest in t['destinations']:
+        for dest in t["destinations"]:
             state_names.add(dest.__name__)
 
     # Add states as nodes
@@ -112,16 +120,16 @@ def generate_state_machine_diagram(state_machine_class: Type[BaseStateMachine], 
 
     # Add transitions as edges
     for t in transitions:
-        for source in t['sources']:
+        for source in t["sources"]:
             source_name = source.__name__
-            for action in t['actions']:
+            for action in t["actions"]:
                 action_name = action.__name__
-                for dest in t['destinations']:
+                for dest in t["destinations"]:
                     dest_name = dest.__name__
 
                     # Prepare multi-line label for the edge
                     label = f"<<FONT POINT-SIZE='12'>{action_name}</FONT>"
-                    if t['metadata']:
+                    if t["metadata"]:
                         label += f"<BR/><FONT POINT-SIZE='10'>{t['metadata']}</FONT>>"
                     else:
                         label += ">"
@@ -131,7 +139,7 @@ def generate_state_machine_diagram(state_machine_class: Type[BaseStateMachine], 
                         dest_name,
                         label=label,
                         fontname=font_family,
-                        fontsize="12"
+                        fontsize="12",
                     )
 
-    dot.render(f'{filename}.gv', view=False)
+    dot.render(f"{filename}.gv", view=False)

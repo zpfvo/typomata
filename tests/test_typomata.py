@@ -46,13 +46,9 @@ class MyStateMachine(BaseStateMachine):
             raise ValueError(f"Invalid action {action} for state {state}")
 
     @transition
-    def to_upper(self, state: Union[StateA, StateB], action: ToUpperAction) -> StateB:
-        if isinstance(state, StateA):
-            return StateB("A" * state.data)
-        elif isinstance(state, StateB):
-            return StateB(state.data.upper())
-        else:
-            raise ValueError(f"Invalid state {state} for action {action}")
+    def to_upper(self, state: StateB, action: ToUpperAction) -> StateB:
+        return StateB(state.data.upper())
+
 
     @transition
     def reset_from_b(self, state: StateB, action: ResetAction) -> StateA:
@@ -62,13 +58,13 @@ class MyStateMachine(BaseStateMachine):
 class TestTypomata(unittest.TestCase):
     def test_state_machine(self):
         state_machine = MyStateMachine()
-        state = StateA(1)
-        state = state_machine.run(state, IncrementAction())
-        self.assertEqual(state, StateA(2))
+        state = StateB("a")
         state = state_machine.run(state, ToUpperAction())
-        self.assertEqual(state, StateB("AA"))
+        self.assertEqual(state, StateB("A"))
         state = state_machine.run(state, ResetAction())
         self.assertEqual(state, StateA(0))
+        state = state_machine.run(state, IncrementAction())
+        self.assertEqual(state, StateA(1))
 
     def test_invalid_transition(self):
         state_machine = MyStateMachine()

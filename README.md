@@ -9,75 +9,91 @@ Typomata is a Python state machine library that leverages type hints to define s
 - Automatically collects transitions based on type annotations.
 - Generate state machine diagrams using Graphviz.
 
-## Installation
+![Generated state machine diagram](readme_state_machine_diagram.png)
+
+## Installation and Getting Started
 
 ```bash
-pip install typomata
+uv sync
+# from project root
+uv run python examples/example_usage.py
+# Will create a state_machine_diagram.gv.pdf
+
+# running tests from project root
+uv uv run python -m unittest discover tests
 ```
 
 ## Requirements
-Python 3.7 or higher.
+Python 3.8 or higher.
 
 ## Usage
 ### Defining States and Actions
 ```python
-from dataclasses import dataclass
-from typomata import BaseState, BaseAction
+# --- States ---
+@dataclass(frozen=True)
+class Idle(BaseState):
+    coffee_stock: int
+
 
 @dataclass(frozen=True)
-class StateA(BaseState):
-    data: int
+class Brewing(BaseState):
+    coffee_stock: int
+
 
 @dataclass(frozen=True)
-class StateB(BaseState):
-    data: str
-
-@dataclass(frozen=True)
-class IncrementAction(BaseAction):
+class OutOfCoffee(BaseState):
     pass
 
+
+# --- Actions ---
 @dataclass(frozen=True)
-class ToUpperAction(BaseAction):
+class InsertCoin(BaseAction):
     pass
 
+
 @dataclass(frozen=True)
-class ResetAction(BaseAction):
+class BrewCoffee(BaseAction):
     pass
+
+
+@dataclass(frozen=True)
+class Refill(BaseAction):
+    amount: int
 ```
 
 ### Creating the State Machine
 ```python
-from typomata import StateMachineBase, transition
-from typing import Union
-
-class MyStateMachine(StateMachineBase):
+class CoffeeMachine(BaseStateMachine):
     @transition
-    def increment_or_reset(self, state: StateA, action: Union[IncrementAction, ResetAction]) -> StateA:
-        if isinstance(action, IncrementAction):
-            return StateA(state.data + 1)
-        elif isinstance(action, ResetAction):
-            return StateA(0)
+    def start_brewing(self, state: Idle, action: InsertCoin) -> Brewing:
+        return Brewing(state.coffee_stock)
 
     @transition
-    def to_upper(self, state: Union[StateA, StateB], action: ToUpperAction) -> StateB:
-        if isinstance(state, StateA):
-            return StateB('A' * state.data)
-        elif isinstance(state, StateB):
-            return StateB(state.data.upper())
+    def finish_brewing(self, state: Brewing, action: BrewCoffee) -> Union[Idle, OutOfCoffee]:
+        new_stock = state.coffee_stock - 1
+        if new_stock > 0:
+            return Idle(new_stock)
+        else:
+            return OutOfCoffee()
 
     @transition
-    def reset_from_b(self, state: StateB, action: ResetAction) -> StateA:
-        return StateA(0)
+    def refill_machine(self, state: Union[Idle, OutOfCoffee], action: Refill) -> Idle:
+        return Idle(getattr(state, "coffee_stock", 0) + action.amount)
 ```
 
 ### Running the State Machine
 ```python
-state_machine = MyStateMachine()
-state = StateA(1)
-actions = [IncrementAction(), ToUpperAction(), ToUpperAction(), ResetAction()]
-for action in actions:
-    state = state_machine.run(state, action)
-    print(state)
+def main():
+    machine = CoffeeMachine()
+    state = Idle(coffee_stock=2)
+    actions = [
+        InsertCoin(), BrewCoffee(), InsertCoin(), BrewCoffee(), Refill(amount=3), InsertCoin(), BrewCoffee()
+    ]
+
+    for action in actions:
+        new_state = machine.run(state, action)
+        print(f"Action: {action}, Transitioned from {state} to {new_state}")
+        state = new_state
 ```
 
 ### Generating the State Machine Diagram
@@ -87,9 +103,6 @@ from typomata import generate_state_machine_diagram
 generate_state_machine_diagram(MyStateMachine)
 ```
 This will create a `state_machine_diagram.gv.pdf` file illustrating your state machine.
-
-## Example
-See the examples directory for a complete example.
 
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.

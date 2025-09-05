@@ -10,83 +10,78 @@ from typomata import (
 )
 
 
-# Define states
+# --- States ---
 @dataclass(frozen=True)
-class StateA(BaseState):
-    data: int
+class Idle(BaseState):
+    coffee_stock: int
 
 
 @dataclass(frozen=True)
-class StateB(BaseState):
-    data: str
+class Brewing(BaseState):
+    coffee_stock: int
 
 
-# Define actions
 @dataclass(frozen=True)
-class IncrementAction(BaseAction):
+class OutOfCoffee(BaseState):
+    pass
+
+
+# --- Actions ---
+@dataclass(frozen=True)
+class InsertCoin(BaseAction):
     pass
 
 
 @dataclass(frozen=True)
-class ToUpperAction(BaseAction):
+class BrewCoffee(BaseAction):
     pass
 
 
 @dataclass(frozen=True)
-class ResetAction(BaseAction):
-    pass
+class Refill(BaseAction):
+    amount: int
 
 
-# Define the state machine
-class MyStateMachine(BaseStateMachine):
+# --- State Machine ---
+class CoffeeMachine(BaseStateMachine):
     @transition
-    def increment_or_reset(
-        self, state: StateA, action: Union[IncrementAction, ResetAction]
-    ) -> Annotated[StateA, "if data > 0"]:
-        if isinstance(action, IncrementAction):
-            return StateA(state.data + 1)
-        elif isinstance(action, ResetAction):
-            return StateA(0)
+    def start_brewing(self, state: Idle, action: InsertCoin) -> Brewing:
+        return Brewing(state.coffee_stock)
+
+    @transition
+    def finish_brewing(self, state: Brewing, action: BrewCoffee) -> Union[Idle, OutOfCoffee]:
+        new_stock = state.coffee_stock - 1
+        if new_stock > 0:
+            return Idle(new_stock)
         else:
-            raise ValueError(f"Invalid action {action} for state {state}")
+            return OutOfCoffee()
 
     @transition
-    def to_upper(
-        self, state: Union[StateA, StateB], action: ToUpperAction
-    ) -> Union[StateA, StateB]:
-        if isinstance(state, StateA):
-            return StateB("A" * state.data)
-        elif isinstance(state, StateB):
-            return StateB(state.data.upper())
-        else:
-            raise ValueError(f"Invalid state {state} for action {action}")
-
-    @transition
-    def reset_from_b(self, state: StateB, action: ResetAction) -> StateA:
-        return StateA(0)
+    def refill_machine(self, state: Union[Idle, OutOfCoffee], action: Refill) -> Idle:
+        return Idle(getattr(state, "coffee_stock", 0) + action.amount)
 
 
-# Usage example
+# --- Usage Example ---
 def main():
-    state_machine = MyStateMachine()
-    state = StateA(1)
+    machine = CoffeeMachine()
+    state = Idle(coffee_stock=2)
     actions = [
-        IncrementAction(),
-        ToUpperAction(),
-        ToUpperAction(),
-        ResetAction(),
-        IncrementAction(),
-        ToUpperAction(),
-        ToUpperAction(),
-        ResetAction(),
+        InsertCoin(),
+        BrewCoffee(),
+        InsertCoin(),
+        BrewCoffee(),
+        Refill(amount=3),
+        InsertCoin(),
+        BrewCoffee(),
     ]
+
     for action in actions:
-        new_state = state_machine.run(state, action)
+        new_state = machine.run(state, action)
         print(f"Action: {action}, Transitioned from {state} to {new_state}")
         state = new_state
 
-    # Generate the state machine diagram
-    generate_state_machine_diagram(MyStateMachine)
+    # Generate state machine diagram
+    generate_state_machine_diagram(CoffeeMachine)
 
 
 if __name__ == "__main__":
