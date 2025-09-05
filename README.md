@@ -20,7 +20,7 @@ uv run python examples/example_usage.py
 # Will create a state_machine_diagram.gv.pdf
 
 # running tests from project root
-uv uv run python -m unittest discover tests
+uv run python -m unittest discover tests
 ```
 
 ## Requirements

@@ -5,17 +5,11 @@ from typing import (
     Callable,
     Dict,
     List,
-    ParamSpec,
     Type,
-    TypeVar,
     Union,
     get_type_hints,
 )
-from typing_extensions import (
-    get_args,
-    get_origin,
-    Annotated,
-)
+from typing_extensions import get_args, get_origin, Annotated, ParamSpec, TypeVar
 from graphviz import Digraph
 
 T = TypeVar("T")
