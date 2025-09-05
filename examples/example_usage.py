@@ -58,12 +58,18 @@ class CoffeeMachine(BaseStateMachine):
 
     @transition
     def refill_machine(self, state: Union[Idle, OutOfCoffee], action: Refill) -> Idle:
-        return Idle(getattr(state, "coffee_stock", 0) + action.amount)
+        if isinstance(state, OutOfCoffee):
+            return Idle(action.amount)
+        else:
+            return Idle(state.coffee_stock + action.amount)
 
 
 # --- Usage Example ---
 def main():
     machine = CoffeeMachine()
+    # Generate state machine diagram
+    generate_state_machine_diagram(CoffeeMachine)
+
     state = Idle(coffee_stock=2)
     actions = [
         InsertCoin(),
@@ -80,8 +86,6 @@ def main():
         print(f"Action: {action}, Transitioned from {state} to {new_state}")
         state = new_state
 
-    # Generate state machine diagram
-    generate_state_machine_diagram(CoffeeMachine)
 
 
 if __name__ == "__main__":
