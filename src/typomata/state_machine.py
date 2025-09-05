@@ -1,12 +1,25 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Type, Union, get_type_hints
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    ParamSpec,
+    Type,
+    TypeVar,
+    Union,
+    get_type_hints,
+)
 from typing_extensions import (
     get_args,
     get_origin,
     Annotated,
 )
 from graphviz import Digraph
+
+T = TypeVar("T")
+P = ParamSpec("P")
 
 
 class BaseState:
@@ -21,7 +34,7 @@ class BaseAction:
     pass
 
 
-def transition(func: Callable) -> Callable:
+def transition(func: Callable[P, T]) -> Callable[P, T]:
     """Decorator to mark methods as transitions."""
     func.__is_transition__ = True
     return func
