@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import wraps
 from typing import (
     Any,
     Callable,
@@ -9,8 +10,9 @@ from typing import (
     Union,
     get_type_hints,
 )
-from typing_extensions import get_args, get_origin, Annotated, ParamSpec, TypeVar
+
 from graphviz import Digraph
+from typing_extensions import Annotated, ParamSpec, TypeVar, get_args, get_origin
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -29,9 +31,33 @@ class BaseAction:
 
 
 def transition(func: Callable[P, T]) -> Callable[P, T]:
-    """Decorator to mark methods as transitions."""
+    """Decorator to mark methods as transitions and add runtime validation."""
     func.__is_transition__ = True
-    return func
+
+    @wraps(func)
+    def wrapper(self, state, action, *args, **kwargs):
+        transitions = type(self)._transitions
+        for trans in transitions:
+            if trans["func"] is wrapper:
+                if not any(isinstance(state, s) for s in trans["sources"]):
+                    raise ValueError(
+                        f"Invalid state {state.__class__.__name__} for {func.__name__}, "
+                        f"expected one of {[s.__name__ for s in trans['sources']]}"
+                    )
+                if not any(isinstance(action, a) for a in trans["actions"]):
+                    raise ValueError(
+                        f"Invalid action {action.__class__.__name__} for {func.__name__}, "
+                        f"expected one of {[a.__name__ for a in trans['actions']]}"
+                    )
+                break
+        else:
+            raise ValueError(
+                f"Function {func.__name__} not found in {type(self).__name__}._transitions"
+            )
+
+        return func(self, state, action, *args, **kwargs)
+
+    return wrapper
 
 
 class BaseStateMachine:
@@ -93,6 +119,9 @@ class BaseStateMachine:
                             "metadata": dest_metadata,  # Store the edge metadata
                         }
                     )
+
+    def transition_map(self) -> List[Dict[str, Any]]:
+        return self._transitions
 
     def run(self, state: BaseState, action: BaseAction) -> BaseState:
         """Run the state machine with the given state and action."""

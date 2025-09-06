@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pprint import pprint
 from typing_extensions import Union
 
 from typomata import (
@@ -67,9 +68,25 @@ class CoffeeMachine(BaseStateMachine):
 # --- Usage Example ---
 def main():
     machine = CoffeeMachine()
+
     # Generate state machine diagram
     generate_state_machine_diagram(CoffeeMachine)
 
+    # Print transition map
+    pprint(machine.transition_map())
+
+    # Explicit state change
+    state = machine.start_brewing(Idle(1), InsertCoin())
+    print(type(state)) # <class '__main__.Brewing'>
+
+    # Runtime Exception if there is no transition
+    try:
+        state = machine.start_brewing(OutOfCoffee(), InsertCoin())
+    except Exception as e:
+        print(repr(e)) # ValueError("Invalid state OutOfCoffee for start_brewing, expected one of ['Idle']")
+
+    # Pass any combination of State and Action to
+    # machine.run  and it will find the correct transition by itself
     state = Idle(coffee_stock=2)
     actions = [
         InsertCoin(),
