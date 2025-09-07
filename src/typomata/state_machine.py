@@ -4,7 +4,6 @@ from functools import wraps
 from typing import (
     Any,
     Callable,
-    Concatenate,
     Dict,
     List,
     Type,
@@ -13,7 +12,14 @@ from typing import (
 )
 
 from graphviz import Digraph
-from typing_extensions import Annotated, ParamSpec, TypeVar, get_args, get_origin
+from typing_extensions import (
+    Annotated,
+    Concatenate,
+    ParamSpec,
+    TypeVar,
+    get_args,
+    get_origin,
+)
 
 
 class BaseState:
