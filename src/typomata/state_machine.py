@@ -4,6 +4,7 @@ from functools import wraps
 from typing import (
     Any,
     Callable,
+    Concatenate,
     Dict,
     List,
     Type,
@@ -13,9 +14,6 @@ from typing import (
 
 from graphviz import Digraph
 from typing_extensions import Annotated, ParamSpec, TypeVar, get_args, get_origin
-
-T = TypeVar("T")
-P = ParamSpec("P")
 
 
 class BaseState:
@@ -30,7 +28,16 @@ class BaseAction:
     pass
 
 
-def transition(func: Callable[P, T]) -> Callable[P, T]:
+MachineT = TypeVar("MachineT")
+StateT = TypeVar("StateT", bound=BaseState)
+ActionT = TypeVar("ActionT", bound=BaseAction)
+P = ParamSpec("P")
+ReturnStateT = TypeVar("ReturnStateT", bound=BaseState)
+
+
+def transition(
+    func: Callable[Concatenate[MachineT, StateT, ActionT, P], ReturnStateT],
+) -> Callable[Concatenate[MachineT, StateT, ActionT, P], ReturnStateT]:
     """Decorator to mark methods as transitions and add runtime validation."""
     func.__is_transition__ = True
 
