@@ -137,7 +137,6 @@ Distinct state classes must remain distinct diagram nodes even when they share a
 
 The following remain implementation work, rather than guarantees of the current release:
 
-- The package does not yet ship `py.typed`, so installed consumers may not discover its annotations.
 - Diagram nodes use class names as identities and can merge distinct states.
 
 Implementation commits should add behavioral and consumer-typing checks for each guarantee and remove the corresponding limitation here once it is resolved.
