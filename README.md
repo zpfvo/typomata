@@ -28,6 +28,10 @@ Python 3.10 or higher. CI currently tests Python 3.10–3.14.
 
 We support stable Python versions until their [upstream end of life](https://devguide.python.org/versions/), unless a documented technical constraint prevents support. New stable versions are added to CI when released; prerelease versions are not part of the support guarantee. The minimum Python version is raised in a subsequent Typomata release after the oldest supported version reaches end of life.
 
+## Transition contract
+
+The [transition contract](docs/transition-contract.md) defines the intended behavior for the next release, including supported annotations, dispatch, inheritance, and static typing. It also lists current implementation limitations.
+
 ## Usage
 ### Defining States and Actions
 ```python
