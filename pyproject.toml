@@ -3,6 +3,8 @@ name = "typomata"
 version = "0.1.0"
 description = "Typomata is a Python state machine library that leverages type hints to define state transitions"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = ["typing_extensions>=4.5","graphviz"]
 
