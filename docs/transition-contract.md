@@ -131,10 +131,7 @@ Distinct state classes must remain distinct diagram nodes even when they share a
 
 The following remain implementation work, rather than guarantees of the current release:
 
-- Registration currently depends on the names `state` and `action`, silently skips missing annotations, and accepts some unsupported signatures and annotations.
-- `A | B` normalization differs across Python versions, and `Annotated` metadata is discarded.
-- Dispatch chooses the first matching method alphabetically instead of rejecting overlaps.
-- Result types are not validated.
+- Duplicate declarations are not rejected, and dispatch chooses the first matching method alphabetically instead of rejecting overlaps.
 - Overridden transitions cannot reliably delegate through `super()`.
 - `transition_map()` exposes the mutable registry.
 - The decorator's static signature loses keyword parameter names, and the package does not ship `py.typed`.

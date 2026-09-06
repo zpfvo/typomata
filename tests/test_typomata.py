@@ -70,9 +70,8 @@ class TestTypomata(unittest.TestCase):
         state_machine = MyStateMachine()
         state = StateA(1)
         with self.assertRaises(ValueError):
-            state_machine.run(state, ToUpperAction())  # Valid
-            state_machine.run(state, ResetAction())  # Valid
-            state_machine.run(state, ToUpperAction())  # Invalid after reset
+            state_machine.run(state, ToUpperAction())
+        self.assertEqual(state_machine.run(state, ResetAction()), StateA(0))
 
 
 if __name__ == "__main__":
