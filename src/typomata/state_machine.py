@@ -45,7 +45,7 @@ def transition(
     func: Callable[Concatenate[MachineT, StateT, ActionT, P], ReturnStateT],
 ) -> Callable[Concatenate[MachineT, StateT, ActionT, P], ReturnStateT]:
     """Decorator to mark methods as transitions and add runtime validation."""
-    func.__is_transition__ = True
+    setattr(func, "__is_transition__", True)
 
     @wraps(func)
     def wrapper(self, state, action, *args, **kwargs):

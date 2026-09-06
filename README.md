@@ -14,13 +14,13 @@ Typomata is a Python state machine library that leverages type hints to define s
 ## Installation and Getting Started
 
 ```bash
-uv sync
+uv sync --locked
 # from project root
-uv run python examples/example_usage.py
+uv run --locked python examples/example_usage.py
 # Will create a state_machine_diagram.gv.pdf
 
 # running tests from project root
-uv run python -m unittest discover tests
+uv run --locked python -m unittest discover -s tests -v
 ```
 
 ## Requirements
@@ -136,3 +136,17 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request.
+
+From a checkout, install [uv](https://docs.astral.sh/uv/getting-started/installation/) and run:
+
+```bash
+uv sync --locked --dev
+uv run --locked python -m unittest discover -s tests -v
+uv run --locked mypy
+```
+
+CI uses uv 0.12.10 and runs these checks on Python 3.10–3.14. To select an interpreter locally, pass `--python 3.10` (or another supported version) to both `uv sync` and `uv run`.
+
+The committed `uv.lock` fixes dependency versions for development and CI. The `--locked` flag rejects an outdated lockfile; see [uv's locking documentation](https://docs.astral.sh/uv/concepts/projects/sync/). After intentionally changing dependencies, run `uv lock`, review the resulting changes, and commit `pyproject.toml` and `uv.lock` together. Use `uv lock --upgrade-package mypy` for a targeted mypy update. Library consumers continue to use the dependency ranges in package metadata; mypy is a development dependency only.
+
+The mypy configuration checks the library source against the Python 3.10 language baseline, including bodies of unannotated functions. Graphviz's missing typing information is ignored only for that dependency. This baseline does not yet verify the installed package's typing behavior or the examples; those checks are part of the remaining [typing contract work](docs/transition-contract.md#static-typing).

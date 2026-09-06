@@ -9,3 +9,20 @@ dependencies = ["typing_extensions>=4.5","graphviz"]
 [build-system]
 requires = ["uv_build>=0.8.15,<0.9.0"]
 build-backend = "uv_build"
+
+[tool.mypy]
+files = ["src/typomata"]
+python_version = "3.10"
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[[tool.mypy.overrides]]
+# Graphviz does not distribute typing information.
+module = ["graphviz", "graphviz.*"]
+ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+]
