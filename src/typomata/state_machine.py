@@ -13,8 +13,8 @@ from inspect import (
     isgeneratorfunction,
     signature,
 )
-from types import UnionType
-from typing import Any, Callable, Dict, List, Type, Union, get_type_hints
+from types import MappingProxyType, UnionType
+from typing import Any, Callable, Mapping, Type, Union, cast, get_type_hints
 
 from graphviz import Digraph
 from typing_extensions import (
@@ -46,6 +46,52 @@ ReturnStateT = TypeVar("ReturnStateT", bound=BaseState)
 class _AnnotationMember:
     type: type
     metadata: tuple[Any, ...]
+
+
+@dataclass(frozen=True)
+class _TransitionDefinition:
+    sources: tuple[type, ...]
+    actions: tuple[type, ...]
+    destinations: tuple[type, ...]
+    func: Callable[..., BaseState]
+    original: Callable[..., BaseState]
+    name: str
+    annotations: Mapping[str, Any]
+    metadata: str
+    destination_metadata: Mapping[type, tuple[str, ...]]
+
+    def matches(self, state: object, action: object) -> bool:
+        return isinstance(state, self.sources) and isinstance(action, self.actions)
+
+    def invoke(self, receiver: object, state: object, action: object) -> BaseState:
+        for value, role, allowed in (
+            (state, "state", self.sources),
+            (action, "action", self.actions),
+        ):
+            if not isinstance(value, allowed):
+                raise ValueError(
+                    f"Invalid {role} {type(value).__name__} for {self.original.__name__}, "
+                    f"expected one of {[item.__name__ for item in allowed]}"
+                )
+        result = self.original(receiver, state, action)
+        if not isinstance(result, self.destinations):
+            raise ValueError(
+                f"Invalid result {type(result).__name__} for {self.name}, "
+                f"expected one of {[item.__name__ for item in self.destinations]}"
+            )
+        return result
+
+    def snapshot(self) -> dict[str, Any]:
+        return {
+            "sources": self.sources,
+            "actions": self.actions,
+            "destinations": self.destinations,
+            "func": self.func,
+            "name": self.name,
+            "annotations": dict(self.annotations),
+            "metadata": self.metadata,
+            "destination_metadata": dict(self.destination_metadata),
+        }
 
 
 def _method_signature(func: Callable[..., Any]) -> Signature:
@@ -89,7 +135,7 @@ def _normalize_annotation(
 
 def _transition_definition(
     owner: type, name: str, decorated: Callable[..., Any]
-) -> Dict[str, Any]:
+) -> _TransitionDefinition:
     context = f"{owner.__qualname__}.{name}"
     original = getattr(decorated, "__wrapped__")
     if not isfunction(original):
@@ -137,15 +183,16 @@ def _transition_definition(
         get_args(destination_hint)[1:]
         if get_origin(destination_hint) is Annotated else ()
     )
-    return {
-        "sources": tuple(dict.fromkeys(member.type for member in members["state"])),
-        "actions": tuple(dict.fromkeys(member.type for member in members["action"])),
-        "destinations": destinations,
-        "func": decorated,
-        "name": context,
-        "annotations": annotations,
-        "metadata": "\n".join(item for item in outer_metadata if isinstance(item, str)),
-        "destination_metadata": {
+    return _TransitionDefinition(
+        sources=tuple(dict.fromkeys(member.type for member in members["state"])),
+        actions=tuple(dict.fromkeys(member.type for member in members["action"])),
+        destinations=destinations,
+        func=decorated,
+        original=original,
+        name=context,
+        annotations=MappingProxyType(annotations),
+        metadata="\n".join(item for item in outer_metadata if isinstance(item, str)),
+        destination_metadata=MappingProxyType({
             destination: tuple(
                 item
                 for member in members["return"]
@@ -154,8 +201,8 @@ def _transition_definition(
                 if isinstance(item, str)
             )
             for destination in destinations
-        },
-    }
+        }),
+    )
 
 
 def transition(
@@ -163,6 +210,7 @@ def transition(
 ) -> Callable[Concatenate[MachineT, StateT, ActionT, P], ReturnStateT]:
     """Mark an instance method as a transition with input and result validation."""
     call_signature = _method_signature(func) if isfunction(func) else None
+    definitions: dict[type, _TransitionDefinition] = {}
 
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -170,31 +218,15 @@ def transition(
             raise TypeError("A transition must be an instance method")
         bound = call_signature.bind(*args, **kwargs)
         receiver, state, action = bound.arguments.values()
-        for definition in type(receiver)._transitions:
-            if definition["func"] is wrapper:
-                break
-        else:
-            raise ValueError(
-                f"Function {func.__name__} not found in {type(receiver).__name__}._transitions"
-            )
-        for value, role, allowed in (
-            (state, "state", definition["sources"]),
-            (action, "action", definition["actions"]),
-        ):
-            if not isinstance(value, allowed):
-                raise ValueError(
-                    f"Invalid {role} {type(value).__name__} for {func.__name__}, "
-                    f"expected one of {[item.__name__ for item in allowed]}"
-                )
-        result = func(*args, **kwargs)
-        if not isinstance(result, definition["destinations"]):
-            raise ValueError(
-                f"Invalid result {type(result).__name__} for {definition['name']}, "
-                f"expected one of {[item.__name__ for item in definition['destinations']]}"
-            )
-        return result
+        for owner in type(receiver).__mro__:
+            if owner in definitions:
+                return definitions[owner].invoke(receiver, state, action)
+        raise ValueError(
+            f"Function {func.__name__} is not registered for {type(receiver).__qualname__}"
+        )
 
     setattr(wrapper, "__is_transition__", True)
+    setattr(wrapper, "__transition_definitions__", definitions)
     return wrapper
 
 
@@ -202,10 +234,17 @@ def _is_transition(member: Any) -> bool:
     return bool(getattr(member, "__is_transition__", False))
 
 
+def _method_definitions(method: Callable[..., Any]) -> dict[type, _TransitionDefinition]:
+    return cast(
+        dict[type, _TransitionDefinition],
+        getattr(method, "__transition_definitions__"),
+    )
+
+
 class BaseStateMachine:
     """Base class for creating state machines using type hints and annotations."""
 
-    _transitions: List[Dict[str, Any]] = []
+    _transitions: tuple[_TransitionDefinition, ...] = ()
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -214,32 +253,94 @@ class BaseStateMachine:
             for name, member in vars(owner).items():
                 members.setdefault(name, (owner, member))
 
-        definitions = []
+        definitions: dict[tuple[type, Callable[..., Any]], _TransitionDefinition] = {}
+        # Resolve base declarations first, including shadowed mixin methods
+        # that may be called through super(). Aliases reuse their definition.
+        for owner in reversed(cls.__mro__):
+            for name, member in sorted(vars(owner).items()):
+                if isinstance(member, (staticmethod, classmethod, property)):
+                    underlying = (
+                        member.fget if isinstance(member, property) else member.__func__
+                    )
+                    if _is_transition(underlying):
+                        raise TypeError(
+                            f"{owner.__qualname__}.{name}: "
+                            "a transition must be an instance method"
+                        )
+                elif _is_transition(member):
+                    key = (owner, member)
+                    if key not in definitions:
+                        registered = _method_definitions(member)
+                        definition = None
+                        for base in owner.__mro__:
+                            definition = definitions.get((base, member), registered.get(base))
+                            if definition is not None:
+                                break
+                        if definition is None:
+                            definition = _transition_definition(owner, name, member)
+                        definitions[key] = definition
+
+        # A wrapper cannot distinguish two declarations for the same function
+        # on one receiver. Reject that combination instead of validating a
+        # direct parent call against a different parent's annotations.
+        shared_methods: dict[Callable[..., Any], _TransitionDefinition] = {}
+        for definition in definitions.values():
+            prior = shared_methods.get(definition.func)
+            if prior is not None and prior is not definition:
+                raise TypeError(
+                    f"{cls.__qualname__}: conflicting definitions for a shared "
+                    f"decorated method: {prior.name} and {definition.name}; "
+                    "declare separate transition methods"
+                )
+            shared_methods[definition.func] = definition
+
+        # Aliases and diamond inheritance can expose the same definition more
+        # than once. Only names visible through the MRO enter dispatch.
+        unique_definitions: dict[int, _TransitionDefinition] = {}
         for name in sorted(members):
             owner, member = members[name]
-            if isinstance(member, (staticmethod, classmethod, property)):
-                underlying = (
-                    member.fget if isinstance(member, property) else member.__func__
-                )
-                if _is_transition(underlying):
-                    raise TypeError(
-                        f"{cls.__qualname__}.{name}: a transition must be an instance method"
-                    )
-            elif _is_transition(member):
-                definitions.append(_transition_definition(owner, name, member))
-        cls._transitions = definitions
+            if _is_transition(member):
+                definition = definitions[owner, member]
+                unique_definitions[id(definition)] = definition
+        pairs: dict[tuple[type, type], _TransitionDefinition] = {}
+        for definition in unique_definitions.values():
+            for source in definition.sources:
+                for action in definition.actions:
+                    previous = pairs.get((source, action))
+                    if previous is not None:
+                        raise TypeError(
+                            f"{cls.__qualname__}: duplicate transition for "
+                            f"{source.__qualname__} with {action.__qualname__}: "
+                            f"{previous.name} and {definition.name}"
+                        )
+                    pairs[source, action] = definition
 
-    def transition_map(self) -> List[Dict[str, Any]]:
-        return self._transitions
+        # Publish only after all declarations pass validation. Inherited methods
+        # retain the annotation resolution of their defining class.
+        for (owner, method), definition in definitions.items():
+            _method_definitions(method)[owner] = definition
+        cls._transitions = tuple(unique_definitions.values())
+
+    def transition_map(self) -> list[dict[str, Any]]:
+        """Return independent registry containers with the declared types and methods."""
+        return [definition.snapshot() for definition in self._transitions]
 
     def run(self, state: BaseState, action: BaseAction) -> BaseState:
         """Run the state machine with the given state and action."""
-        for definition in self.__class__._transitions:
-            if isinstance(action, definition["actions"]) and isinstance(
-                state, definition["sources"]
-            ):
-                return definition["func"](self, state, action)
-        raise ValueError(f"Invalid transition from {state} with {action}")
+        matches = [
+            definition for definition in self._transitions
+            if definition.matches(state, action)
+        ]
+        context = (
+            f"{type(self).__qualname__} from {type(state).__qualname__} "
+            f"with {type(action).__qualname__}"
+        )
+        if not matches:
+            raise ValueError(f"Invalid transition in {context}")
+        if len(matches) > 1:
+            names = ", ".join(definition.name for definition in matches)
+            raise ValueError(f"Ambiguous transition in {context}: {names}")
+        return matches[0].invoke(self, state, action)
 
 
 def generate_state_machine_diagram(
@@ -255,9 +356,9 @@ def generate_state_machine_diagram(
     # Collect unique state names
     state_names = set()
     for t in transitions:
-        for source in t["sources"]:
+        for source in t.sources:
             state_names.add(source.__name__)
-        for dest in t["destinations"]:
+        for dest in t.destinations:
             state_names.add(dest.__name__)
 
     # Add states as nodes
@@ -266,16 +367,16 @@ def generate_state_machine_diagram(
 
     # Add transitions as edges
     for t in transitions:
-        for source in t["sources"]:
+        for source in t.sources:
             source_name = source.__name__
-            for action in t["actions"]:
+            for action in t.actions:
                 action_name = action.__name__
-                for dest in t["destinations"]:
+                for dest in t.destinations:
                     dest_name = dest.__name__
 
                     # Prepare multi-line label for the edge
                     label = f"<<FONT POINT-SIZE='12'>{escape(action_name)}</FONT>"
-                    for text in t["destination_metadata"][dest]:
+                    for text in t.destination_metadata[dest]:
                         for line in text.split("\n"):
                             label += f"<BR/><FONT POINT-SIZE='10'>{escape(line)}</FONT>"
                     label += ">"

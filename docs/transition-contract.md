@@ -111,6 +111,10 @@ Machine subclasses inherit transitions according to Python's method resolution o
 
 Each machine class owns its dispatch registry. Introspection returns immutable descriptions or independent snapshots; modifying an introspection result cannot alter dispatch. Validation of an explicitly called parent method does not depend on that method being present in the child's dispatch registry.
 
+Declarations are resolved once in their defining class's namespace, including decorated methods on mixins. A subclass does not reinterpret inherited annotations using its own aliases. Aliases of an inherited decorated method reuse its declaration and count as one transition. Combining unrelated bases that independently registered the same decorated callable is rejected: use separate decorated methods so each parent call has an unambiguous declaration.
+
+`transition_map()` returns a new list of dictionaries, including independent `annotations` and `destination_metadata` dictionaries. Types, callables, and arbitrary annotation metadata retain their identities; these objects are not deep-copied. Dispatch and validation use frozen normalized definitions, so changing the returned registry containers or the original annotation dictionary does not redefine a transition. Diagrams also read these frozen definitions.
+
 ## Static typing
 
 The decorator preserves each supported method's callable signature and return annotation. The installed package supplies its typing information to consumers.
@@ -131,9 +135,6 @@ Distinct state classes must remain distinct diagram nodes even when they share a
 
 The following remain implementation work, rather than guarantees of the current release:
 
-- Duplicate declarations are not rejected, and dispatch chooses the first matching method alphabetically instead of rejecting overlaps.
-- Overridden transitions cannot reliably delegate through `super()`.
-- `transition_map()` exposes the mutable registry.
 - The decorator's static signature loses keyword parameter names, and the package does not ship `py.typed`.
 - Diagram nodes use class names as identities and can merge distinct states.
 
