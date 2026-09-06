@@ -3,7 +3,6 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from functools import wraps
-from html import escape
 from inspect import (
     Parameter,
     Signature,
@@ -16,7 +15,6 @@ from inspect import (
 from types import MappingProxyType, UnionType
 from typing import Any, Callable, Mapping, Type, Union, cast, get_type_hints
 
-from graphviz import Digraph
 from typing_extensions import (
     Annotated,
     ParamSpec,
@@ -345,48 +343,8 @@ class BaseStateMachine:
 
 def generate_state_machine_diagram(
     state_machine_class: Type[BaseStateMachine], filename: str = "state_machine_diagram"
-):
-    """Generate a state machine diagram using Graphviz with annotated edge conditions."""
-    transitions = state_machine_class._transitions
-    dot = Digraph(comment="State Machine")
+) -> None:
+    """Render a diagram; requires the diagrams extra and Graphviz's dot executable."""
+    from .diagrams import generate_state_machine_diagram as generate
 
-    font_family = "DejaVu Sans"
-    dot.attr(fontname=font_family)
-
-    # Collect unique state names
-    state_names = set()
-    for t in transitions:
-        for source in t.sources:
-            state_names.add(source.__name__)
-        for dest in t.destinations:
-            state_names.add(dest.__name__)
-
-    # Add states as nodes
-    for state_name in state_names:
-        dot.node(state_name, fontname=font_family)
-
-    # Add transitions as edges
-    for t in transitions:
-        for source in t.sources:
-            source_name = source.__name__
-            for action in t.actions:
-                action_name = action.__name__
-                for dest in t.destinations:
-                    dest_name = dest.__name__
-
-                    # Prepare multi-line label for the edge
-                    label = f"<<FONT POINT-SIZE='12'>{escape(action_name)}</FONT>"
-                    for text in t.destination_metadata[dest]:
-                        for line in text.split("\n"):
-                            label += f"<BR/><FONT POINT-SIZE='10'>{escape(line)}</FONT>"
-                    label += ">"
-
-                    dot.edge(
-                        source_name,
-                        dest_name,
-                        label=label,
-                        fontname=font_family,
-                        fontsize="12",
-                    )
-
-    dot.render(f"{filename}.gv", view=False)
+    generate(state_machine_class, filename)

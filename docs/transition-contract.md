@@ -129,6 +129,8 @@ Callers should annotate variables that hold multiple state types accordingly and
 
 ## Diagrams
 
+Visualization is optional: core imports and transitions do not load or require Graphviz. Install `typomata[diagrams]` to use `generate_state_machine_diagram`; rendering also requires the system Graphviz `dot` executable on `PATH`. The Python dependency is loaded when diagram generation is requested. If it is absent, the function raises `ModuleNotFoundError` with installation guidance.
+
 Diagrams show declared possible transitions between state categories. They do not prove reachability, exhaustiveness, or input/output correlations within a union. Return metadata supplies descriptive labels, not executable conditions.
 
 Distinct state classes must remain distinct diagram nodes even when they share a name. Visualization reads the same normalized declarations used for validation and introspection.

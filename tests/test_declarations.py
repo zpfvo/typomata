@@ -265,7 +265,7 @@ class TestDeclarations(unittest.TestCase):
 
         machine_type = make_machine(go)
         captured = []
-        with patch("typomata.state_machine.Digraph.render",
+        with patch("graphviz.Digraph.render",
                    lambda graph, *args, **kwargs: captured.append(graph.source)):
             generate_state_machine_diagram(machine_type)
         source = captured[0]

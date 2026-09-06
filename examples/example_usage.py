@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 from dataclasses import dataclass
 from pprint import pprint
 from typing_extensions import Union
@@ -66,11 +67,11 @@ class CoffeeMachine(BaseStateMachine):
 
 
 # --- Usage Example ---
-def main():
+def main(diagram: bool = False):
     machine = CoffeeMachine()
 
-    # Generate state machine diagram
-    generate_state_machine_diagram(CoffeeMachine)
+    if diagram:
+        generate_state_machine_diagram(CoffeeMachine)
 
     # Print transition map
     pprint(machine.transition_map())
@@ -106,4 +107,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = ArgumentParser(description="Run the coffee state machine example.")
+    parser.add_argument("--diagram", action="store_true", help="also render a Graphviz diagram")
+    main(diagram=parser.parse_args().diagram)

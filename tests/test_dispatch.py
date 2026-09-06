@@ -339,7 +339,7 @@ class TestRegistry(unittest.TestCase):
                 self.assertEqual(instance.transition_map()[0]["annotations"]["state"], Idle)
 
         captured = []
-        with patch("typomata.state_machine.Digraph.render",
+        with patch("graphviz.Digraph.render",
                    lambda graph, *args, **kwargs: captured.append(graph.source)):
             generate_state_machine_diagram(Machine)
         self.assertIn("ready", captured[0])

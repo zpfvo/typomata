@@ -17,10 +17,9 @@ Typomata is a Python state machine library that leverages type hints to define s
 uv sync --locked
 # from project root
 uv run --locked python examples/example_usage.py
-# Will create a state_machine_diagram.gv.pdf
 
 # running tests from project root
-uv run --locked python -m unittest discover -s tests -v
+uv run --locked --extra diagrams python -m unittest discover -s tests -v
 ```
 
 ## Requirements
@@ -95,9 +94,6 @@ class CoffeeMachine(BaseStateMachine):
 def main():
     machine = CoffeeMachine()
 
-    # Generate state machine diagram
-    generate_state_machine_diagram(CoffeeMachine)
-
     # Print transition map
     pprint(machine.transition_map())
 
@@ -124,6 +120,19 @@ def main():
 ```
 
 ### Generating the State Machine Diagram
+
+Visualization is optional. Install `typomata[diagrams]` instead of `typomata`
+when installing the library. From a checkout, run:
+
+```bash
+uv sync --locked --extra diagrams
+uv run --locked --extra diagrams python examples/example_usage.py --diagram
+```
+
+Rendering also needs the system Graphviz `dot` executable on `PATH`; see the
+[Graphviz installation instructions](https://graphviz.readthedocs.io/en/stable/manual.html#installation).
+The default example runs without Graphviz and does not create a diagram.
+
 ```python
 from typomata import generate_state_machine_diagram
 
@@ -140,13 +149,13 @@ Contributions are welcome! Please open an issue or submit a pull request.
 From a checkout, install [uv](https://docs.astral.sh/uv/getting-started/installation/) and run:
 
 ```bash
-uv sync --locked --dev
-uv run --locked python -m unittest discover -s tests -v
-uv run --locked mypy
+uv sync --locked --extra diagrams --dev
+uv run --locked --extra diagrams python -m unittest discover -s tests -v
+uv run --locked --extra diagrams mypy
 ```
 
 CI uses uv 0.12.10 and runs these checks on Python 3.10–3.14. To select an interpreter locally, pass `--python 3.10` (or another supported version) to both `uv sync` and `uv run`.
 
 The committed `uv.lock` fixes dependency versions for development and CI. The `--locked` flag rejects an outdated lockfile; see [uv's locking documentation](https://docs.astral.sh/uv/concepts/projects/sync/). After intentionally changing dependencies, run `uv lock`, review the resulting changes, and commit `pyproject.toml` and `uv.lock` together. Use `uv lock --upgrade-package mypy` for a targeted mypy update. Library consumers continue to use the dependency ranges in package metadata; mypy is a development dependency only.
 
-The mypy configuration checks the library source and static fixtures in `tests/typing` against the Python 3.10 language baseline, including bodies of unannotated functions. The fixtures verify valid calls, inferred return types, and expected errors; they are checked by `uv run --locked mypy`, not executed as runtime tests. Specific `type: ignore` comments mark expected errors, and `warn_unused_ignores` makes the check fail if those errors disappear. Graphviz's missing typing information is ignored only for that dependency. Checks against an installed package and the examples remain part of the [typing contract work](docs/transition-contract.md#static-typing).
+The mypy configuration checks the library source and static fixtures in `tests/typing` against the Python 3.10 language baseline, including bodies of unannotated functions. The fixtures verify valid calls, inferred return types, and expected errors; they are checked by `uv run --locked --extra diagrams mypy`, not executed as runtime tests. Specific `type: ignore` comments mark expected errors, and `warn_unused_ignores` makes the check fail if those errors disappear. Graphviz's missing typing information is ignored only for that dependency. Checks against an installed package and the examples remain part of the [typing contract work](docs/transition-contract.md#static-typing).

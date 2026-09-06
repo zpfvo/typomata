@@ -362,8 +362,12 @@ name = "typomata"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "graphviz" },
     { name = "typing-extensions" },
+]
+
+[package.optional-dependencies]
+diagrams = [
+    { name = "graphviz" },
 ]
 
 [package.dev-dependencies]
@@ -373,9 +377,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "graphviz" },
+    { name = "graphviz", marker = "extra == 'diagrams'" },
     { name = "typing-extensions", specifier = ">=4.5" },
 ]
+provides-extras = ["diagrams"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "mypy", specifier = ">=2.3.1" }]
