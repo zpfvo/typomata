@@ -11,7 +11,7 @@ requires = ["uv_build>=0.8.15,<0.9.0"]
 build-backend = "uv_build"
 
 [tool.mypy]
-files = ["src/typomata"]
+files = ["src/typomata", "tests/typing"]
 python_version = "3.10"
 check_untyped_defs = true
 warn_unused_ignores = true

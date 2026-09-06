@@ -19,7 +19,6 @@ from typing import Any, Callable, Mapping, Type, Union, cast, get_type_hints
 from graphviz import Digraph
 from typing_extensions import (
     Annotated,
-    Concatenate,
     ParamSpec,
     TypeVar,
     get_args,
@@ -35,9 +34,6 @@ class BaseAction:
     """Base class for all actions in the state machine."""
 
 
-MachineT = TypeVar("MachineT")
-StateT = TypeVar("StateT", bound=BaseState)
-ActionT = TypeVar("ActionT", bound=BaseAction)
 P = ParamSpec("P")
 ReturnStateT = TypeVar("ReturnStateT", bound=BaseState)
 
@@ -206,21 +202,25 @@ def _transition_definition(
 
 
 def transition(
-    func: Callable[Concatenate[MachineT, StateT, ActionT, P], ReturnStateT],
-) -> Callable[Concatenate[MachineT, StateT, ActionT, P], ReturnStateT]:
+    func: Callable[P, ReturnStateT],
+) -> Callable[P, ReturnStateT]:
     """Mark an instance method as a transition with input and result validation."""
     call_signature = _method_signature(func) if isfunction(func) else None
     definitions: dict[type, _TransitionDefinition] = {}
 
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> ReturnStateT:
         if call_signature is None:
             raise TypeError("A transition must be an instance method")
         bound = call_signature.bind(*args, **kwargs)
         receiver, state, action = bound.arguments.values()
         for owner in type(receiver).__mro__:
             if owner in definitions:
-                return definitions[owner].invoke(receiver, state, action)
+                # invoke validates the result against this method's declared
+                # destinations before restoring its specific static type.
+                return cast(
+                    ReturnStateT, definitions[owner].invoke(receiver, state, action)
+                )
         raise ValueError(
             f"Function {func.__name__} is not registered for {type(receiver).__qualname__}"
         )

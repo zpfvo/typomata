@@ -121,6 +121,8 @@ The decorator preserves each supported method's callable signature and return an
 
 For the example above, a type checker should infer `Running` for `machine.start(Idle(), Start())` and reject `machine.start(Running(), Start())`. Runtime validation additionally protects calls from untyped code.
 
+The decorator preserves the whole parameter list, including names and positional-only restrictions. Static call checking follows the method's annotations; state/action base-class requirements and the supported signature shape are validated when the machine class is created.
+
 `run(state: BaseState, action: BaseAction) -> BaseState` has a deliberately broad static signature. Type checkers do not infer valid state/action pairs or specific return types from the runtime registry. An invalid pair of otherwise valid state and action instances may pass static checking and fail during dispatch.
 
 Callers should annotate variables that hold multiple state types accordingly and narrow results before accessing state-specific data. Payload invariants, graph reachability, and completeness are not static guarantees of this API. Precise overloads or generated stubs for `run()` are possible future features.
@@ -135,7 +137,7 @@ Distinct state classes must remain distinct diagram nodes even when they share a
 
 The following remain implementation work, rather than guarantees of the current release:
 
-- The decorator's static signature loses keyword parameter names, and the package does not ship `py.typed`.
+- The package does not yet ship `py.typed`, so installed consumers may not discover its annotations.
 - Diagram nodes use class names as identities and can merge distinct states.
 
 Implementation commits should add behavioral and consumer-typing checks for each guarantee and remove the corresponding limitation here once it is resolved.
