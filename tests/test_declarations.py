@@ -273,8 +273,8 @@ class TestDeclarations(unittest.TestCase):
         self.assertIn("stock &lt; 1", source)
         self.assertIn("stock &gt; 0", source)
         self.assertNotIn("retained", source)
-        idle_edge = next(line for line in source.splitlines() if "Idle -> Idle" in line)
-        ready_edge = next(line for line in source.splitlines() if "Idle -> Ready" in line)
+        idle_edge = next(line for line in source.splitlines() if "state_0 -> state_0" in line)
+        ready_edge = next(line for line in source.splitlines() if "state_0 -> state_1" in line)
         self.assertNotIn("stock &gt; 0", idle_edge)
         self.assertNotIn("stock &lt; 1", ready_edge)
         self.assertEqual(machine_type().transition_map()[0]["annotations"]["return"],

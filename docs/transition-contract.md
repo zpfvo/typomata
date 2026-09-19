@@ -133,12 +133,8 @@ Visualization is optional: core imports and transitions do not load or require G
 
 Diagrams show declared possible transitions between state categories. They do not prove reachability, exhaustiveness, or input/output correlations within a union. Return metadata supplies descriptive labels, not executable conditions.
 
-Distinct state classes must remain distinct diagram nodes even when they share a name. Visualization reads the same normalized declarations used for validation and introspection.
+Distinct state classes have distinct diagram node IDs even when they share a name. Labels use the class name, with a numeric suffix when names collide. Nodes follow declaration traversal order. Visualization reads the same normalized declarations used for validation and introspection.
 
 ## Current implementation limitations
 
-The following remain implementation work, rather than guarantees of the current release:
-
-- Diagram nodes use class names as identities and can merge distinct states.
-
-Implementation commits should add behavioral and consumer-typing checks for each guarantee and remove the corresponding limitation here once it is resolved.
+Graph construction and rendering still share one API; callers cannot yet obtain a graph through a separate construction function.

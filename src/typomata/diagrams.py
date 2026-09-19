@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections import Counter
 from html import escape
 from typing import Type
 
-from .state_machine import BaseStateMachine
+from .state_machine import BaseState, BaseStateMachine
 
 
 def generate_state_machine_diagram(
@@ -28,26 +29,26 @@ def generate_state_machine_diagram(
     font_family = "DejaVu Sans"
     dot.attr(fontname=font_family)
 
-    # Collect unique state names
-    state_names = set()
+    # Assign IDs in declaration traversal order, independently of display names.
+    state_ids: dict[type[BaseState], str] = {}
     for t in transitions:
-        for source in t.sources:
-            state_names.add(source.__name__)
-        for dest in t.destinations:
-            state_names.add(dest.__name__)
+        for state in (*t.sources, *t.destinations):
+            if state not in state_ids:
+                state_ids[state] = f"state_{len(state_ids)}"
 
-    # Add states as nodes
-    for state_name in state_names:
-        dot.node(state_name, fontname=font_family)
+    name_counts = Counter(state.__name__ for state in state_ids)
+    for index, (state, node_id) in enumerate(state_ids.items()):
+        label = state.__name__
+        if name_counts[label] > 1:
+            label = f"{label} ({index + 1})"
+        dot.node(node_id, label=label, fontname=font_family)
 
     # Add transitions as edges
     for t in transitions:
         for source in t.sources:
-            source_name = source.__name__
             for action in t.actions:
                 action_name = action.__name__
                 for dest in t.destinations:
-                    dest_name = dest.__name__
 
                     # Prepare multi-line label for the edge
                     label = f"<<FONT POINT-SIZE='12'>{escape(action_name)}</FONT>"
@@ -57,8 +58,8 @@ def generate_state_machine_diagram(
                     label += ">"
 
                     dot.edge(
-                        source_name,
-                        dest_name,
+                        state_ids[source],
+                        state_ids[dest],
                         label=label,
                         fontname=font_family,
                         fontsize="12",
